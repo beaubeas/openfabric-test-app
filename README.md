@@ -1,11 +1,15 @@
 Download source from this link: https://drive.google.com/drive/folders/1iGpvn_Q6C556q8lnMhKjt3ZmnhKJ3Wvp
 # How to load jitsi docker source
 docker load -i jitsi-jicofo.tar
+
 docker load -i jitsi-jigasi.tar
+
 docker load -i jitsi-jvb.tar
+
 docker load -i jitsi-web.tar
 
 unzip stabel-10133-1
+Plz go to extracted directory
 
 cp env.example .env
 
