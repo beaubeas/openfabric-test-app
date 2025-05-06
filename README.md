@@ -11,7 +11,9 @@ This application creates a seamless pipeline that:
 3. **Generates** stunning visuals from text using Openfabric's Text-to-Image app
 4. **Transforms** 2D images into interactive 3D models using Openfabric's Image-to-3D app
 5. **Remembers** creations across sessions with a robust memory system
-6. **Visualizes** results through an intuitive Streamlit web interface
+6. **Tags & Categorizes** creations automatically for better organization
+7. **Enables Similarity Search** for finding related content using vector embeddings
+8. **Visualizes** results through an intuitive Streamlit web interface
 
 ## 📋 Requirements
 
@@ -160,6 +162,11 @@ The memory system is implemented in `core/memory.py` and provides the following 
 - `store_long_term`: Store data in long-term memory (persistent)
 - `retrieve_long_term`: Retrieve data from long-term memory
 - `search_memory`: Search for specific creations based on text queries
+- `search_by_tags`: Search for creations based on tags
+- `search_by_category`: Search for creations based on category
+- `get_all_tags`: Get all unique tags used by a user
+- `get_all_categories`: Get all unique categories used by a user
+- `update_tags`: Update the tags for a creation
 
 Example of searching memory:
 
@@ -169,6 +176,54 @@ from core.memory import Memory
 memory = Memory()
 results = memory.search_memory("super-user", "dragon")
 ```
+
+### Vector Database for Similarity Search
+
+The application uses ChromaDB for vector-based similarity search, implemented in `core/vector_db.py`:
+
+- Stores embeddings of prompts and expanded prompts
+- Enables semantic search beyond simple keyword matching
+- Provides fast and efficient similarity-based retrieval
+- Supports filtering by tags and metadata
+
+Example of similarity search:
+
+```python
+from core.vector_db import VectorDB
+
+vector_db = VectorDB()
+results = vector_db.search_by_text("a majestic dragon with fire", n_results=5)
+```
+
+### Automatic Tagging and Categorization
+
+The application includes an automatic tagging and categorization system, implemented in `core/tagger.py`:
+
+- Analyzes prompts and expanded prompts to extract relevant tags
+- Categorizes creations into predefined categories (landscape, character, animal, etc.)
+- Identifies styles, colors, and moods present in the descriptions
+- Provides a structured way to organize and browse creations
+
+Example of tagging:
+
+```python
+from core.tagger import Tagger
+
+tagger = Tagger()
+analysis = tagger.analyze("A red dragon breathing fire in a medieval castle")
+# Returns tags, categories, primary_category, styles, colors, and moods
+```
+
+### Enhanced Web Interface
+
+The Streamlit web interface has been enhanced with new features:
+
+- **Tabbed Memory Interface**: Browse creations by different views (All, Search, Category, Tag)
+- **Similarity Search**: Find creations similar to a text description
+- **Category Filtering**: Browse creations by category
+- **Tag Filtering**: Browse creations by tags
+- **Visual Tags and Categories**: Easily identify and filter by tags and categories
+- **Interactive 3D Model Viewer**: View and interact with 3D models directly in the browser
 
 ## 🧩 Architecture
 
@@ -250,23 +305,19 @@ Provides a user-friendly web interface:
 
 Potential improvements for future versions:
 
-1. **Advanced Memory**
-   - Implement FAISS/ChromaDB for similarity-based retrieval
-   - Add tagging and categorization of creations
-
-2. **Enhanced User Interface**
-   - Add 3D model viewer directly in the Streamlit interface
+1. **Enhanced User Interface**
    - Implement drag-and-drop functionality for uploading reference images
+   - Add animation controls for 3D models
 
-3. **Voice Interaction**
+2. **Voice Interaction**
    - Implement voice-to-text for natural interaction
    - Add text-to-speech for system responses
 
-4. **Enhanced LLM Integration**
+3. **Enhanced LLM Integration**
    - Support for more local LLM options
    - Fine-tuning capabilities for specific domains
 
-5. **Deployment Improvements**
+4. **Deployment Improvements**
    - Add Kubernetes deployment configuration
    - Implement CI/CD pipeline for automated testing and deployment
 

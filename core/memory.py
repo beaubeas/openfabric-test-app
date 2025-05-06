@@ -2,7 +2,10 @@ import json
 import os
 import logging
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Union, Set
+
+from core.vector_db import VectorDB
+from core.tagger import Tagger
 
 class Memory:
     """
@@ -11,17 +14,30 @@ class Memory:
     Attributes:
         _short_term_memory (Dict[str, Dict]): In-memory storage for session context
         _memory_file (str): Path to the file for persistent storage
+        _vector_db (VectorDB): Vector database for similarity-based retrieval
+        _tagger (Tagger): Tagger for automatic tagging and categorization
     """
     
-    def __init__(self, memory_file: str = "datastore/memory.json"):
+    def __init__(self, 
+                 memory_file: str = "datastore/memory.json",
+                 vector_db: Optional[VectorDB] = None,
+                 tagger: Optional[Tagger] = None):
         """
         Initialize the Memory instance.
         
         Args:
             memory_file (str): Path to the file for persistent storage
+            vector_db (Optional[VectorDB]): Vector database instance
+            tagger (Optional[Tagger]): Tagger instance
         """
         self._short_term_memory: Dict[str, Dict] = {}
         self._memory_file = memory_file
+        
+        # Initialize vector database
+        self._vector_db = vector_db if vector_db is not None else VectorDB()
+        
+        # Initialize tagger
+        self._tagger = tagger if tagger is not None else Tagger()
         
         # Create memory file if it doesn't exist
         if not os.path.exists(memory_file):
@@ -61,16 +77,56 @@ class Memory:
     
     def store_long_term(self, user_id: str, data: Dict[str, Any]) -> None:
         """
-        Store data in long-term memory (persistent storage).
+        Store data in long-term memory (persistent storage) and vector database.
         
         Args:
             user_id (str): Unique identifier for the user
             data (Dict[str, Any]): Data to store
         """
-        # Add timestamp
-        data['timestamp'] = datetime.now().isoformat()
+        # Add timestamp if not already present
+        if 'timestamp' not in data:
+            data['timestamp'] = datetime.now().isoformat()
         
-        # Load existing data
+        # Generate a unique ID for the item if not already present
+        if 'request_id' not in data:
+            data['request_id'] = str(datetime.now().timestamp())
+        
+        item_id = data['request_id']
+        
+        # Analyze the prompt and expanded prompt to extract tags and categories
+        prompt = data.get('prompt', '')
+        expanded_prompt = data.get('expanded_prompt', '')
+        existing_analysis = data.get('analysis', {})
+        
+        # Perform tagging and categorization
+        tagging_result = self._tagger.analyze(prompt, expanded_prompt, existing_analysis)
+        
+        # Add tags and categories to the data
+        data['tags'] = tagging_result['tags']
+        data['categories'] = tagging_result['categories']
+        data['primary_category'] = tagging_result['primary_category']
+        data['styles'] = tagging_result['styles']
+        data['colors'] = tagging_result['colors']
+        data['moods'] = tagging_result['moods']
+        
+        # Store in vector database
+        text_to_embed = f"{prompt} {expanded_prompt}"
+        self._vector_db.add_item(
+            item_id=item_id,
+            text=text_to_embed,
+            metadata={
+                'user_id': user_id,
+                'prompt': prompt,
+                'expanded_prompt': expanded_prompt,
+                'image_path': data.get('image_path', ''),
+                'model_path': data.get('model_path', ''),
+                'timestamp': data['timestamp'],
+                'primary_category': tagging_result['primary_category']
+            },
+            tags=tagging_result['tags']
+        )
+        
+        # Load existing data from JSON file
         try:
             with open(self._memory_file, 'r') as f:
                 memory_data = json.load(f)
@@ -122,7 +178,7 @@ class Memory:
     
     def search_memory(self, user_id: str, query: str) -> List[Dict[str, Any]]:
         """
-        Search for data in long-term memory based on a simple text query.
+        Search for data in long-term memory based on a text query using vector similarity.
         
         Args:
             user_id (str): Unique identifier for the user
@@ -131,25 +187,216 @@ class Memory:
         Returns:
             List[Dict[str, Any]]: List of matching records
         """
-        user_data = self.retrieve_long_term(user_id)
-        query = query.lower()
+        # Search using vector database for semantic similarity
+        vector_results = self._vector_db.search_by_text(query, n_results=10)
         
-        # Simple text search
-        results = []
+        # Filter results by user_id
+        filtered_results = []
+        for result in vector_results:
+            metadata = result.get('metadata', {})
+            if metadata.get('user_id') == user_id:
+                # Get the full record from the JSON file
+                record_id = result.get('id')
+                full_record = self._get_record_by_id(user_id, record_id)
+                if full_record:
+                    # Add similarity score to the record
+                    full_record['similarity_score'] = result.get('similarity')
+                    filtered_results.append(full_record)
+        
+        # If no results from vector search, fall back to simple text search
+        if not filtered_results:
+            logging.info(f"No vector search results, falling back to text search for query: {query}")
+            user_data = self.retrieve_long_term(user_id)
+            query_lower = query.lower()
+            
+            for record in user_data:
+                # Search in prompt
+                if 'prompt' in record and query_lower in record['prompt'].lower():
+                    record['similarity_score'] = 0.5  # Arbitrary score for text match
+                    filtered_results.append(record)
+                    continue
+                
+                # Search in expanded_prompt
+                if 'expanded_prompt' in record and query_lower in record['expanded_prompt'].lower():
+                    record['similarity_score'] = 0.4  # Slightly lower score
+                    filtered_results.append(record)
+                    continue
+        
+        return filtered_results
+    
+    def _get_record_by_id(self, user_id: str, record_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get a record by its ID from the JSON file.
+        
+        Args:
+            user_id (str): Unique identifier for the user
+            record_id (str): Unique identifier for the record
+            
+        Returns:
+            Optional[Dict[str, Any]]: The record if found, None otherwise
+        """
+        try:
+            with open(self._memory_file, 'r') as f:
+                memory_data = json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError) as e:
+            logging.warning(f"Error retrieving memory: {e}")
+            return None
+        
+        user_data = memory_data.get(user_id, [])
+        
         for record in user_data:
-            # Search in prompt
-            if 'prompt' in record and query in record['prompt'].lower():
-                results.append(record)
-                continue
-            
-            # Search in expanded_prompt
-            if 'expanded_prompt' in record and query in record['expanded_prompt'].lower():
-                results.append(record)
-                continue
-            
-            # Search in description
-            if 'description' in record and query in record['description'].lower():
-                results.append(record)
-                continue
+            if record.get('request_id') == record_id:
+                return record
         
-        return results
+        return None
+    
+    def search_by_tags(self, user_id: str, tags: List[str], limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        Search for data in long-term memory based on tags.
+        
+        Args:
+            user_id (str): Unique identifier for the user
+            tags (List[str]): Tags to search for
+            limit (int): Maximum number of records to retrieve
+            
+        Returns:
+            List[Dict[str, Any]]: List of matching records
+        """
+        # Search using vector database for tag matches
+        vector_results = self._vector_db.search_by_tags(tags, n_results=limit)
+        
+        # Filter results by user_id
+        filtered_results = []
+        for result in vector_results:
+            metadata = result.get('metadata', {})
+            if metadata.get('user_id') == user_id:
+                # Get the full record from the JSON file
+                record_id = result.get('id')
+                full_record = self._get_record_by_id(user_id, record_id)
+                if full_record:
+                    filtered_results.append(full_record)
+        
+        # If no results from vector search, fall back to simple tag search
+        if not filtered_results:
+            logging.info(f"No vector search results, falling back to simple tag search for tags: {tags}")
+            user_data = self.retrieve_long_term(user_id)
+            
+            for record in user_data:
+                if 'tags' in record:
+                    record_tags = record['tags']
+                    # Check if any of the search tags are in the record tags
+                    if any(tag in record_tags for tag in tags):
+                        filtered_results.append(record)
+                        if len(filtered_results) >= limit:
+                            break
+        
+        return filtered_results
+    
+    def search_by_category(self, user_id: str, category: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        Search for data in long-term memory based on category.
+        
+        Args:
+            user_id (str): Unique identifier for the user
+            category (str): Category to search for
+            limit (int): Maximum number of records to retrieve
+            
+        Returns:
+            List[Dict[str, Any]]: List of matching records
+        """
+        user_data = self.retrieve_long_term(user_id)
+        
+        # Filter by category
+        filtered_results = []
+        for record in user_data:
+            if record.get('primary_category') == category or category in record.get('categories', []):
+                filtered_results.append(record)
+                if len(filtered_results) >= limit:
+                    break
+        
+        return filtered_results
+    
+    def get_all_tags(self, user_id: str) -> List[str]:
+        """
+        Get all unique tags used by a user.
+        
+        Args:
+            user_id (str): Unique identifier for the user
+            
+        Returns:
+            List[str]: List of unique tags
+        """
+        user_data = self.retrieve_long_term(user_id)
+        
+        # Extract all tags
+        all_tags = set()
+        for record in user_data:
+            if 'tags' in record and isinstance(record['tags'], list):
+                all_tags.update(record['tags'])
+        
+        return sorted(list(all_tags))
+    
+    def get_all_categories(self, user_id: str) -> List[str]:
+        """
+        Get all unique categories used by a user.
+        
+        Args:
+            user_id (str): Unique identifier for the user
+            
+        Returns:
+            List[str]: List of unique categories
+        """
+        user_data = self.retrieve_long_term(user_id)
+        
+        # Extract all categories
+        all_categories = set()
+        for record in user_data:
+            if 'primary_category' in record:
+                all_categories.add(record['primary_category'])
+            if 'categories' in record and isinstance(record['categories'], list):
+                all_categories.update(record['categories'])
+        
+        return sorted(list(all_categories))
+    
+    def update_tags(self, user_id: str, record_id: str, tags: List[str]) -> bool:
+        """
+        Update the tags for a record.
+        
+        Args:
+            user_id (str): Unique identifier for the user
+            record_id (str): Unique identifier for the record
+            tags (List[str]): New tags for the record
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            with open(self._memory_file, 'r') as f:
+                memory_data = json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError) as e:
+            logging.warning(f"Error retrieving memory: {e}")
+            return False
+        
+        user_data = memory_data.get(user_id, [])
+        
+        # Find and update the record
+        for i, record in enumerate(user_data):
+            if record.get('request_id') == record_id:
+                # Update tags in the record
+                record['tags'] = tags
+                
+                # Update memory data
+                memory_data[user_id][i] = record
+                
+                # Save updated data
+                with open(self._memory_file, 'w') as f:
+                    json.dump(memory_data, f, indent=2)
+                
+                # Update vector database
+                self._vector_db.update_item_tags(record_id, tags)
+                
+                logging.info(f"Updated tags for record {record_id}")
+                return True
+        
+        logging.warning(f"Record {record_id} not found for user {user_id}")
+        return False

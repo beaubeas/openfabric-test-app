@@ -233,6 +233,40 @@
         "setting": "unspecified"
       },
       "timestamp": "2025-05-05T16:11:17.923271"
+    },
+    {
+      "request_id": "ec21849d-1b1c-4065-ac58-5514885734dc",
+      "prompt": "plz give me the image of huge whale tiger",
+      "expanded_prompt": "plz give me the image of huge whale tiger, with dramatic lighting, vibrant colors, detailed textures, 4K resolution, professional photography, trending on artstation",
+      "image_path": "output/ec21849d-1b1c-4065-ac58-5514885734dc_image.png",
+      "model_path": "output/ec21849d-1b1c-4065-ac58-5514885734dc_model.glb",
+      "processing_time": 33.55108880996704,
+      "analysis": {
+        "subject": "plz",
+        "style": "default",
+        "mood": "neutral",
+        "colors": [
+          "default"
+        ],
+        "setting": "unspecified"
+      },
+      "timestamp": "2025-05-06T05:10:59.466963",
+      "tags": [
+        "abstract",
+        "animal",
+        "dramatic",
+        "plz"
+      ],
+      "categories": [
+        "animal",
+        "abstract"
+      ],
+      "primary_category": "animal",
+      "styles": [],
+      "colors": [],
+      "moods": [
+        "dramatic"
+      ]
     }
   ]
 }
