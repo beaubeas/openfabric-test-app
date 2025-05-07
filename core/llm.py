@@ -1,6 +1,5 @@
 import logging
-import os
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any
 
 try:
     from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
@@ -10,25 +9,10 @@ except ImportError:
     logging.warning("Transformers library not available. LLM functionality will be limited.")
 
 class LLM:
-    """
-    LLM class that handles interaction with local language models like DeepSeek or Llama.
-    
-    Attributes:
-        model_name (str): Name of the model to use
-        model: The loaded model
-        tokenizer: The tokenizer for the model
-        generator: The text generation pipeline
-    """
     
     def __init__(self, model_name: str = "deepseek-ai/deepseek-coder-6.7b-instruct", 
-                 device: str = "cpu"):
-        """
-        Initialize the LLM instance.
-        
-        Args:
-            model_name (str): Name or path of the model to use
-            device (str): Device to run the model on ('cpu' or 'cuda')
-        """
+        device: str = "cpu"):
+
         self.model_name = model_name
         self.model = None
         self.tokenizer = None
@@ -88,16 +72,6 @@ class LLM:
                 self.generator = None
     
     def expand_prompt(self, prompt: str, max_length: int = 500) -> str:
-        """
-        Expand a user prompt to make it more detailed and creative.
-        
-        Args:
-            prompt (str): The user's original prompt
-            max_length (int): Maximum length of the expanded prompt
-            
-        Returns:
-            str: The expanded prompt
-        """
         if not TRANSFORMERS_AVAILABLE or self.generator is None:
             # Fallback if transformers is not available or model loading failed
             logging.warning("Using fallback prompt expansion due to missing model")
@@ -139,30 +113,12 @@ class LLM:
             return self._fallback_expand_prompt(prompt)
     
     def _fallback_expand_prompt(self, prompt: str) -> str:
-        """
-        Fallback method for prompt expansion when the model is not available.
-        
-        Args:
-            prompt (str): The user's original prompt
-            
-        Returns:
-            str: A simple expanded version of the prompt
-        """
         # Add some basic enhancements to the prompt
         expanded = f"{prompt}, with dramatic lighting, vibrant colors, detailed textures, 4K resolution, professional photography, trending on artstation"
         logging.info(f"Using fallback expansion: {expanded}")
         return expanded
     
     def analyze_prompt(self, prompt: str) -> Dict[str, Any]:
-        """
-        Analyze a prompt to extract key elements and themes.
-        
-        Args:
-            prompt (str): The user's prompt
-            
-        Returns:
-            Dict[str, Any]: Dictionary containing analysis results
-        """
         if not TRANSFORMERS_AVAILABLE or self.generator is None:
             # Fallback if transformers is not available or model loading failed
             return {

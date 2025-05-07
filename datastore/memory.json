@@ -267,6 +267,38 @@
       "moods": [
         "dramatic"
       ]
+    },
+    {
+      "request_id": "c41966bd-7153-4337-b304-47f4aa3c71f9",
+      "prompt": "give me the image of big octopus",
+      "expanded_prompt": "give me the image of big octopus, with dramatic lighting, vibrant colors, detailed textures, 4K resolution, professional photography, trending on artstation",
+      "image_path": "output/c41966bd-7153-4337-b304-47f4aa3c71f9_image.png",
+      "model_path": "output/c41966bd-7153-4337-b304-47f4aa3c71f9_model.glb",
+      "processing_time": 41.28805422782898,
+      "analysis": {
+        "subject": "give",
+        "style": "default",
+        "mood": "neutral",
+        "colors": [
+          "default"
+        ],
+        "setting": "unspecified"
+      },
+      "timestamp": "2025-05-06T13:55:47.460061",
+      "tags": [
+        "abstract",
+        "dramatic",
+        "give"
+      ],
+      "categories": [
+        "abstract"
+      ],
+      "primary_category": "abstract",
+      "styles": [],
+      "colors": [],
+      "moods": [
+        "dramatic"
+      ]
     }
   ]
 }

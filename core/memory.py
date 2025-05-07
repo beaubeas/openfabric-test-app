@@ -2,34 +2,17 @@ import json
 import os
 import logging
 from datetime import datetime
-from typing import Dict, List, Optional, Any, Union, Set
+from typing import Dict, List, Optional, Any
 
 from core.vector_db import VectorDB
 from core.tagger import Tagger
 
 class Memory:
-    """
-    Memory class that handles both short-term (session) and long-term (persistent) memory.
-    
-    Attributes:
-        _short_term_memory (Dict[str, Dict]): In-memory storage for session context
-        _memory_file (str): Path to the file for persistent storage
-        _vector_db (VectorDB): Vector database for similarity-based retrieval
-        _tagger (Tagger): Tagger for automatic tagging and categorization
-    """
-    
+   
     def __init__(self, 
-                 memory_file: str = "datastore/memory.json",
-                 vector_db: Optional[VectorDB] = None,
-                 tagger: Optional[Tagger] = None):
-        """
-        Initialize the Memory instance.
-        
-        Args:
-            memory_file (str): Path to the file for persistent storage
-            vector_db (Optional[VectorDB]): Vector database instance
-            tagger (Optional[Tagger]): Tagger instance
-        """
+        memory_file: str = "datastore/memory.json",
+        vector_db: Optional[VectorDB] = None,
+        tagger: Optional[Tagger] = None):
         self._short_term_memory: Dict[str, Dict] = {}
         self._memory_file = memory_file
         
@@ -46,13 +29,6 @@ class Memory:
                 json.dump({}, f)
     
     def store_short_term(self, user_id: str, data: Dict[str, Any]) -> None:
-        """
-        Store data in short-term memory.
-        
-        Args:
-            user_id (str): Unique identifier for the user
-            data (Dict[str, Any]): Data to store
-        """
         if user_id not in self._short_term_memory:
             self._short_term_memory[user_id] = {}
         
@@ -64,25 +40,9 @@ class Memory:
         logging.info(f"Stored data in short-term memory for user {user_id}")
     
     def retrieve_short_term(self, user_id: str) -> Dict[str, Any]:
-        """
-        Retrieve data from short-term memory.
-        
-        Args:
-            user_id (str): Unique identifier for the user
-            
-        Returns:
-            Dict[str, Any]: Stored data for the user
-        """
         return self._short_term_memory.get(user_id, {})
     
     def store_long_term(self, user_id: str, data: Dict[str, Any]) -> None:
-        """
-        Store data in long-term memory (persistent storage) and vector database.
-        
-        Args:
-            user_id (str): Unique identifier for the user
-            data (Dict[str, Any]): Data to store
-        """
         # Add timestamp if not already present
         if 'timestamp' not in data:
             data['timestamp'] = datetime.now().isoformat()
@@ -148,16 +108,6 @@ class Memory:
         logging.info(f"Stored data in long-term memory for user {user_id}")
     
     def retrieve_long_term(self, user_id: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:
-        """
-        Retrieve data from long-term memory.
-        
-        Args:
-            user_id (str): Unique identifier for the user
-            limit (Optional[int]): Maximum number of records to retrieve
-            
-        Returns:
-            List[Dict[str, Any]]: List of stored data for the user
-        """
         try:
             with open(self._memory_file, 'r') as f:
                 memory_data = json.load(f)
@@ -177,16 +127,6 @@ class Memory:
         return user_data
     
     def search_memory(self, user_id: str, query: str) -> List[Dict[str, Any]]:
-        """
-        Search for data in long-term memory based on a text query using vector similarity.
-        
-        Args:
-            user_id (str): Unique identifier for the user
-            query (str): Text to search for
-            
-        Returns:
-            List[Dict[str, Any]]: List of matching records
-        """
         # Search using vector database for semantic similarity
         vector_results = self._vector_db.search_by_text(query, n_results=10)
         
@@ -225,16 +165,6 @@ class Memory:
         return filtered_results
     
     def _get_record_by_id(self, user_id: str, record_id: str) -> Optional[Dict[str, Any]]:
-        """
-        Get a record by its ID from the JSON file.
-        
-        Args:
-            user_id (str): Unique identifier for the user
-            record_id (str): Unique identifier for the record
-            
-        Returns:
-            Optional[Dict[str, Any]]: The record if found, None otherwise
-        """
         try:
             with open(self._memory_file, 'r') as f:
                 memory_data = json.load(f)
@@ -251,17 +181,6 @@ class Memory:
         return None
     
     def search_by_tags(self, user_id: str, tags: List[str], limit: int = 10) -> List[Dict[str, Any]]:
-        """
-        Search for data in long-term memory based on tags.
-        
-        Args:
-            user_id (str): Unique identifier for the user
-            tags (List[str]): Tags to search for
-            limit (int): Maximum number of records to retrieve
-            
-        Returns:
-            List[Dict[str, Any]]: List of matching records
-        """
         # Search using vector database for tag matches
         vector_results = self._vector_db.search_by_tags(tags, n_results=limit)
         
@@ -293,17 +212,6 @@ class Memory:
         return filtered_results
     
     def search_by_category(self, user_id: str, category: str, limit: int = 10) -> List[Dict[str, Any]]:
-        """
-        Search for data in long-term memory based on category.
-        
-        Args:
-            user_id (str): Unique identifier for the user
-            category (str): Category to search for
-            limit (int): Maximum number of records to retrieve
-            
-        Returns:
-            List[Dict[str, Any]]: List of matching records
-        """
         user_data = self.retrieve_long_term(user_id)
         
         # Filter by category
@@ -317,15 +225,6 @@ class Memory:
         return filtered_results
     
     def get_all_tags(self, user_id: str) -> List[str]:
-        """
-        Get all unique tags used by a user.
-        
-        Args:
-            user_id (str): Unique identifier for the user
-            
-        Returns:
-            List[str]: List of unique tags
-        """
         user_data = self.retrieve_long_term(user_id)
         
         # Extract all tags
@@ -337,15 +236,6 @@ class Memory:
         return sorted(list(all_tags))
     
     def get_all_categories(self, user_id: str) -> List[str]:
-        """
-        Get all unique categories used by a user.
-        
-        Args:
-            user_id (str): Unique identifier for the user
-            
-        Returns:
-            List[str]: List of unique categories
-        """
         user_data = self.retrieve_long_term(user_id)
         
         # Extract all categories
@@ -359,17 +249,6 @@ class Memory:
         return sorted(list(all_categories))
     
     def update_tags(self, user_id: str, record_id: str, tags: List[str]) -> bool:
-        """
-        Update the tags for a record.
-        
-        Args:
-            user_id (str): Unique identifier for the user
-            record_id (str): Unique identifier for the record
-            tags (List[str]): New tags for the record
-            
-        Returns:
-            bool: True if successful, False otherwise
-        """
         try:
             with open(self._memory_file, 'r') as f:
                 memory_data = json.load(f)

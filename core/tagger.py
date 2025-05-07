@@ -3,13 +3,6 @@ import re
 from typing import Dict, List, Any, Optional, Set, Tuple
 
 class Tagger:
-    """
-    Tagger class that handles automatic tagging and categorization of creations.
-    
-    This class analyzes prompts and expanded prompts to extract relevant tags
-    and categorize the creations based on their content.
-    """
-    
     # Predefined categories with associated keywords
     CATEGORIES = {
         "landscape": ["landscape", "mountain", "forest", "beach", "ocean", "sea", "lake", "river", "waterfall", 
@@ -100,41 +93,17 @@ class Tagger:
             self.mood_patterns.append((mood, pattern))
     
     def analyze(self, prompt: str, expanded_prompt: str = None, analysis: Dict[str, Any] = None) -> Dict[str, Any]:
-        """
-        Analyze a prompt and expanded prompt to extract tags and categories.
-        
-        Args:
-            prompt (str): The original prompt
-            expanded_prompt (str, optional): The expanded prompt
-            analysis (Dict[str, Any], optional): Existing analysis from LLM
-            
-        Returns:
-            Dict[str, Any]: Dictionary containing tags, categories, and other metadata
-        """
-        # Combine prompts for analysis
         text_to_analyze = prompt
         if expanded_prompt:
             text_to_analyze = f"{prompt} {expanded_prompt}"
-        
-        # Extract categories
+
         categories = self._extract_categories(text_to_analyze)
-        
-        # Extract styles
         styles = self._extract_styles(text_to_analyze)
-        
-        # Extract colors
         colors = self._extract_colors(text_to_analyze)
-        
-        # Extract moods
         moods = self._extract_moods(text_to_analyze)
-        
-        # Generate tags
         tags = self._generate_tags(categories, styles, colors, moods, analysis)
-        
-        # Determine primary category
         primary_category = self._determine_primary_category(categories)
-        
-        # Prepare result
+
         result = {
             "tags": tags,
             "categories": list(categories),
@@ -148,15 +117,6 @@ class Tagger:
         return result
     
     def _extract_categories(self, text: str) -> Set[str]:
-        """
-        Extract categories from text.
-        
-        Args:
-            text (str): Text to analyze
-            
-        Returns:
-            Set[str]: Set of categories
-        """
         categories = set()
         
         for category, patterns in self.category_patterns.items():
@@ -168,15 +128,6 @@ class Tagger:
         return categories
     
     def _extract_styles(self, text: str) -> Set[str]:
-        """
-        Extract styles from text.
-        
-        Args:
-            text (str): Text to analyze
-            
-        Returns:
-            Set[str]: Set of styles
-        """
         styles = set()
         
         for style, pattern in self.style_patterns:
@@ -186,15 +137,6 @@ class Tagger:
         return styles
     
     def _extract_colors(self, text: str) -> Set[str]:
-        """
-        Extract colors from text.
-        
-        Args:
-            text (str): Text to analyze
-            
-        Returns:
-            Set[str]: Set of colors
-        """
         colors = set()
         
         for color, pattern in self.color_patterns:
@@ -204,15 +146,6 @@ class Tagger:
         return colors
     
     def _extract_moods(self, text: str) -> Set[str]:
-        """
-        Extract moods from text.
-        
-        Args:
-            text (str): Text to analyze
-            
-        Returns:
-            Set[str]: Set of moods
-        """
         moods = set()
         
         for mood, pattern in self.mood_patterns:
@@ -222,107 +155,49 @@ class Tagger:
         return moods
     
     def _generate_tags(self, 
-                      categories: Set[str], 
-                      styles: Set[str], 
-                      colors: Set[str], 
-                      moods: Set[str],
-                      analysis: Optional[Dict[str, Any]] = None) -> List[str]:
-        """
-        Generate tags from extracted categories, styles, colors, and moods.
-        
-        Args:
-            categories (Set[str]): Set of categories
-            styles (Set[str]): Set of styles
-            colors (Set[str]): Set of colors
-            moods (Set[str]): Set of moods
-            analysis (Optional[Dict[str, Any]]): Existing analysis from LLM
-            
-        Returns:
-            List[str]: List of tags
-        """
+        categories: Set[str], 
+        styles: Set[str], 
+        colors: Set[str], 
+        moods: Set[str],
+        analysis: Optional[Dict[str, Any]] = None) -> List[str]:
+
         tags = set()
         
-        # Add categories as tags
         tags.update(categories)
-        
-        # Add styles as tags
         tags.update(styles)
-        
-        # Add colors as tags (limit to 3 most important)
         tags.update(list(colors)[:3])
-        
-        # Add moods as tags (limit to 2 most important)
         tags.update(list(moods)[:2])
         
-        # Add subject from analysis if available
         if analysis and "subject" in analysis and analysis["subject"] != "unknown":
             tags.add(analysis["subject"])
         
-        # Add setting from analysis if available
         if analysis and "setting" in analysis and analysis["setting"] != "unspecified":
             tags.add(analysis["setting"])
         
         return sorted(list(tags))
     
     def _determine_primary_category(self, categories: Set[str]) -> str:
-        """
-        Determine the primary category from a set of categories.
-        
-        Args:
-            categories (Set[str]): Set of categories
-            
-        Returns:
-            str: Primary category
-        """
+
         if not categories:
             return "uncategorized"
         
-        # Priority order for categories
         priority_order = [
             "character", "animal", "fantasy", "sci-fi", "landscape", 
             "architecture", "vehicle", "object", "food", "abstract"
         ]
         
-        # Find the highest priority category
         for category in priority_order:
             if category in categories:
                 return category
         
-        # If no priority category is found, return the first one
         return next(iter(categories))
     
     def suggest_tags(self, prompt: str, n: int = 5) -> List[str]:
-        """
-        Suggest tags for a prompt.
-        
-        Args:
-            prompt (str): The prompt to suggest tags for
-            n (int): Maximum number of tags to suggest
-            
-        Returns:
-            List[str]: List of suggested tags
-        """
-        # Analyze the prompt
+
         analysis = self.analyze(prompt)
-        
-        # Get the tags
         tags = analysis["tags"]
-        
-        # Limit to n tags
         return tags[:n]
     
     def categorize(self, prompt: str) -> str:
-        """
-        Categorize a prompt.
-        
-        Args:
-            prompt (str): The prompt to categorize
-            
-        Returns:
-            str: The primary category
-        """
-        # Analyze the prompt
         analysis = self.analyze(prompt)
-        
-        # Get the primary category
         return analysis["primary_category"]
