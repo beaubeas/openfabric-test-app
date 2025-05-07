@@ -69,7 +69,9 @@ class VectorDB:
                 metadatas=[metadata]
             )
             
-            self._client.persist()
+            # Only call persist if it's a PersistentClient
+            if hasattr(self._client, 'persist'):
+                self._client.persist()
             logging.info(f"Added item {item_id} to vector database")
         
         except Exception as e:
@@ -197,7 +199,9 @@ class VectorDB:
                 metadatas=[metadata]
             )
             
-            self._client.persist()
+            # Only call persist if it's a PersistentClient
+            if hasattr(self._client, 'persist'):
+                self._client.persist()
             
             logging.info(f"Updated tags for item {item_id}")
             return True
@@ -210,7 +214,9 @@ class VectorDB:
 
         try:
             self._collection.delete(ids=[item_id])
-            self._client.persist()
+            # Only call persist if it's a PersistentClient
+            if hasattr(self._client, 'persist'):
+                self._client.persist()
             
             logging.info(f"Deleted item {item_id} from vector database")
             return True

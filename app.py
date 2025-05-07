@@ -419,8 +419,7 @@ with tab1:
                     image = Image.open(image_path)
                     st.image(image, use_container_width=True)
                 if model_path and os.path.exists(model_path):
-                    st.markdown("**3D Model Generated:**")
-                    display_3d_model(model_path)
+                    st.markdown("**3D Model Generated. Plz check memory tab.**")
             else:
                 st.error("Unexpected response format or no response received.")
 
