@@ -277,14 +277,12 @@ def display_3d_model(model_path):
             with col1:
                 with open(model_path, "rb") as file:
                     model_bytes = file.read()
-                    # Create a unique key for the download button using the full path and a timestamp
-                    unique_key = f"download_button_{model_path}_{datetime.now().timestamp()}"
                     st.download_button(
                         label="Download 3D Model",
                         data=model_bytes,
                         file_name=os.path.basename(model_path),
                         mime="application/octet-stream",
-                        key=unique_key
+                        key=f"download_button_{os.path.basename(model_path)}"
                     )
             
             with col2:
